@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>问卷星 - 主页</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/static/css/main.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <header class="mb-4">
+            <h1 class="display-4 text-center">问卷星</h1>
+            <div id="user-info" class="text-end">
+                <!-- 用户信息将通过JS动态加载 -->
+            </div>
+        </header>
+
+        <div class="dashboard">
+            <ul class="nav nav-tabs" id="mainTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="create-tab" data-bs-toggle="tab" data-bs-target="#create-tab-pane" type="button" role="tab" aria-controls="create-tab-pane" aria-selected="true">创建问卷</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="public-tab" data-bs-toggle="tab" data-bs-target="#public-tab-pane" type="button" role="tab" aria-controls="public-tab-pane" aria-selected="false">查看问卷</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="my-tab" data-bs-toggle="tab" data-bs-target="#my-tab-pane" type="button" role="tab" aria-controls="my-tab-pane" aria-selected="false">我的问卷</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="results-tab" data-bs-toggle="tab" data-bs-target="#results-tab-pane" type="button" role="tab" aria-controls="results-tab-pane" aria-selected="false">查看详细数据</button>
+                </li>
+            </ul>
+            <div class="tab-content" id="mainTabContent">
+                <!-- 创建问卷 -->
+                <div class="tab-pane fade show active" id="create-tab-pane" role="tabpanel" aria-labelledby="create-tab" tabindex="0">
+                    <div id="create-app">
+                        <h2>创建新问卷</h2>
+                        <form id="create-form" class="mt-4">
+                            <div class="mb-3">
+                                <label for="title" class="form-label">问卷标题</label>
+                                <input type="text" class="form-control" id="title" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="description" class="form-label">问卷描述</label>
+                                <textarea class="form-control" id="description" rows="3" required></textarea>
+                            </div>
+                            <div class="mb-3 form-check">
+                                <input type="checkbox" class="form-check-input" id="isPublic">
+                                <label class="form-check-label" for="isPublic">公开问卷</label>
+                            </div>
+
+                            <h3>问题列表</h3>
+                            <div id="questions-container">
+                                <!-- 问题将通过JS动态添加 -->
+                            </div>
+                            
+                            <button type="button" class="btn btn-primary mb-4" id="add-question-btn">添加问题</button>
+                            
+                            <div>
+                                <button type="submit" class="btn btn-success">提交问卷</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- 查看问卷 -->
+                <div class="tab-pane fade" id="public-tab-pane" role="tabpanel" aria-labelledby="public-tab" tabindex="0">
+                    <div id="public-app">
+                        <h2>公开问卷</h2>
+                        <div class="row questionnaire-list" id="public-questionnaires">
+                            <!-- 公开问卷列表将通过JS动态加载 -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 我的问卷 -->
+                <div class="tab-pane fade" id="my-tab-pane" role="tabpanel" aria-labelledby="my-tab" tabindex="0">
+                    <div id="my-app">
+                        <h2>我的问卷</h2>
+                        <div class="row questionnaire-list" id="my-questionnaires">
+                            <!-- 我的问卷列表将通过JS动态加载 -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 查看详细数据 -->
+                <div class="tab-pane fade" id="results-tab-pane" role="tabpanel" aria-labelledby="results-tab" tabindex="0">
+                    <div id="results-app">
+                        <h2>我的问卷结果</h2>
+                        <div id="results-loading" class="text-center my-5">
+                            <div class="spinner-border" role="status">
+                                <span class="visually-hidden">加载中...</span>
+                            </div>
+                        </div>
+                        <div id="results-content" style="display: none;">
+                            <div class="mb-3">
+                                <label for="questionnaire-select" class="form-label">选择问卷</label>
+                                <select id="questionnaire-select" class="form-select">
+                                    <option value="">-- 请选择 --</option>
+                                    <!-- 选项将通过JS动态加载 -->
+                                </select>
+                            </div>
+                            
+                            <div id="responses-container" style="display: none;">
+                                <h3>回答列表</h3>
+                                <div id="responses-list">
+                                    <!-- 回答列表将通过JS动态加载 -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <footer class="mt-5 text-center text-muted">
+            <p>&copy; 2024 问卷星 - 基于Rocket框架的问卷系统</p>
+        </footer>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="/static/js/main.js"></script>
+</body>
+</html> 
