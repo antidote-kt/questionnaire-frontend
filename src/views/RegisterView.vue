@@ -3,6 +3,8 @@ import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 // 导入Element Plus图标
 import { User, Lock, Message, UserFilled } from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
+import axios from 'axios'
 
 const router = useRouter()
 const username = ref('')
@@ -57,24 +59,27 @@ const register = async () => {
   try {
     isLoading.value = true
     
-    // 这里应该替换为实际的API调用
-    // const response = await axios.post('/api/register', {
-    //   username: username.value,
-    //   nickname: nickname.value,
-    //   email: email.value,
-    //   password: password.value
-    // })
+    const response = await axios.post('/api/users/register', {
+      username: username.value,
+      nickname: nickname.value,
+      email: email.value,
+      password: password.value
+    })
     
-    // 模拟注册成功
-    setTimeout(() => {
-      isLoading.value = false
+    const { code, message } = response.data
+    
+    if (code === 200) {
+      ElMessage.success(message || '注册成功')
       // 注册成功后跳转到登录页面
       router.push('/login')
-    }, 1000)
-  } catch (error) {
-    isLoading.value = false
-    errorMessage.value = '注册失败，请稍后重试'
+    } else {
+      errorMessage.value = message || '注册失败，请稍后重试'
+    }
+  } catch (error: any) {
     console.error('注册错误:', error)
+    errorMessage.value = error.response?.data?.message || '注册失败，请稍后重试'
+  } finally {
+    isLoading.value = false
   }
 }
 </script>

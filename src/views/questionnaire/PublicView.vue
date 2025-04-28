@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { Search } from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
+import axios from 'axios'
 
 interface Questionnaire {
   id: string
@@ -18,40 +20,38 @@ const isLoading = ref(true)
 const searchText = ref('')
 
 // 加载公开问卷列表
-const loadPublicQuestionnaires = () => {
+const loadPublicQuestionnaires = async () => {
   isLoading.value = true
   
-  // 模拟API调用
-  setTimeout(() => {
-    publicQuestionnaires.value = [
-      {
-        id: '1',
-        title: '用户满意度调查',
-        description: '了解用户对我们产品的满意程度',
-        creator: '管理员',
-        createdAt: '2023-05-15',
-        responseCount: 120
-      },
-      {
-        id: '2',
-        title: '产品功能调研',
-        description: '收集用户对新功能的需求和建议',
-        creator: '产品经理',
-        createdAt: '2023-05-10',
-        responseCount: 85
-      },
-      {
-        id: '3',
-        title: '网站用户体验调查',
-        description: '评估网站的用户体验和易用性',
-        creator: 'UX设计师',
-        createdAt: '2023-05-05',
-        responseCount: 96
-      }
-    ]
+  try {
+    const params = searchText.value ? { search: searchText.value } : {}
+    const response = await axios.get('/api/questionnaires/public', { params })
+    const { code, data } = response.data
+    
+    if (code === 200 && data) {
+      publicQuestionnaires.value = data.items
+    } else {
+      ElMessage.error('加载公开问卷失败')
+    }
+  } catch (error) {
+    console.error('加载公开问卷失败:', error)
+    ElMessage.error('加载公开问卷失败，请检查网络连接')
+  } finally {
     isLoading.value = false
-  }, 800)
+  }
 }
+
+// 监听搜索文本变化，延迟500ms执行搜索
+let searchTimeout: number | null = null
+watch(searchText, () => {
+  if (searchTimeout) {
+    clearTimeout(searchTimeout)
+  }
+  
+  searchTimeout = setTimeout(() => {
+    loadPublicQuestionnaires()
+  }, 500) as unknown as number
+})
 
 // 跳转到填写问卷页面
 const goToFill = (id: string) => {

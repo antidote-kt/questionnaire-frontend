@@ -1,19 +1,34 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 // 导入Element Plus图标
 import { Delete, Plus, ArrowLeft } from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
+import axios from 'axios'
+import { useUserStore } from '../../stores/user'
+
+interface Question {
+  id: number;
+  type: 'text' | 'radio' | 'checkbox'; // 限定为特定类型
+  title: string;
+  required: boolean;
+  options: string[]; // 选项是字符串数组
+}
 
 const router = useRouter()
-
 const route = useRoute()
+const userStore = useUserStore()
+
+// 获取用户登录状态
+const isLoggedIn = computed(() => userStore.isLoggedIn())
 
 // 问卷创建相关
 const title = ref('')
 const description = ref('')
 const isPublic = ref(false)
-const questions = ref([])
+const questions = ref<Question[]>([]); // 明确类型为 Question[]
 const isEditing = ref(false)
+const isLoading = ref(false)
 
 // 返回问卷列表
 const goBack = () => {
@@ -25,32 +40,36 @@ const loadQuestionnaireData = async () => {
   const id = route.params.id
   if (id) {
     isEditing.value = true
-    // 这里应该替换为实际的API调用
-    // 模拟加载数据
-    const mockData = {
-      title: '示例问卷',
-      description: '这是一个示例问卷描述',
-      isPublic: true,
-      questions: [
-        {
-          id: 1,
-          type: 'text',
-          title: '示例问题',
-          required: true,
-          options: []
-        }
-      ]
-    }
+    isLoading.value = true
     
-    title.value = mockData.title
-    description.value = mockData.description
-    isPublic.value = mockData.isPublic
-    questions.value = mockData.questions
+    try {
+      const response = await axios.get(`/api/questionnaires/${id}`)
+      const { code, data } = response.data
+      
+      if (code === 200 && data) {
+        title.value = data.title
+        description.value = data.description
+        isPublic.value = data.isPublic
+        questions.value = data.questions
+      } else {
+        ElMessage.error('加载问卷失败')
+      }
+    } catch (error) {
+      console.error('加载问卷失败:', error)
+      ElMessage.error('加载问卷失败，请检查网络连接')
+    } finally {
+      isLoading.value = false
+    }
   }
 }
 
 onMounted(() => {
-  loadQuestionnaireData()
+  if (isEditing.value || isLoggedIn.value) {
+    loadQuestionnaireData()
+  } else if (!isLoggedIn.value) {
+    ElMessage.warning('请先登录后再创建问卷')
+    router.push('/login')
+  }
 })
 
 // 添加问题
@@ -65,20 +84,60 @@ const addQuestion = () => {
 }
 
 // 提交问卷
-const submitQuestionnaire = () => {
-  // 这里应该替换为实际的API调用
-  console.log('提交问卷', {
-    title: title.value,
-    description: description.value,
-    isPublic: isPublic.value,
-    questions: questions.value
-  })
+const submitQuestionnaire = async () => {
+  if (!isLoggedIn.value) {
+    ElMessage.warning('请先登录后再创建问卷')
+    router.push('/login')
+    return
+  }
   
-  // 重置表单
-  title.value = ''
-  description.value = ''
-  isPublic.value = false
-  questions.value = []
+  if (!title.value) {
+    ElMessage.warning('请输入问卷标题')
+    return
+  }
+  
+  try {
+    isLoading.value = true
+    
+    const questionnaireData = {
+      title: title.value,
+      description: description.value,
+      isPublic: isPublic.value,
+      questions: questions.value
+    }
+    
+    let response
+    
+    if (isEditing.value) {
+      response = await axios.put(`/api/questionnaires/${route.params.id}`, questionnaireData)
+    } else {
+      response = await axios.post('/api/questionnaires', questionnaireData)
+    }
+    
+    const { code, message, data } = response.data
+    
+    if (code === 200) {
+      ElMessage.success(message || '保存成功')
+      
+      // 重置表单
+      if (!isEditing.value) {
+        title.value = ''
+        description.value = ''
+        isPublic.value = false
+        questions.value = []
+      }
+      
+      // 跳转到我的问卷页面
+      router.push('/questionnaire/my')
+    } else {
+      ElMessage.error(message || '保存失败')
+    }
+  } catch (error) {
+    console.error('提交问卷失败:', error)
+    ElMessage.error('提交失败，请检查网络连接')
+  } finally {
+    isLoading.value = false
+  }
 }
 </script>
 
@@ -145,7 +204,7 @@ const submitQuestionnaire = () => {
       <div class="form-actions">
         <el-button type="success" @click="submitQuestionnaire">{{ isEditing ? '保存修改' : '提交问卷' }}</el-button>
         <el-alert
-          v-if="!$root.userInfo"
+          v-if="!isLoggedIn"
           title="请先登录后再创建问卷"
           type="warning"
           show-icon

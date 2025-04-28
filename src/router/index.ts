@@ -38,6 +38,11 @@ const router = createRouter({
           component: () => import('../views/questionnaire/ResultsView.vue')
         },
         {
+          path: 'responses/:id',
+          name: 'questionnaire-responses',
+          component: () => import('../views/questionnaire/ResponsesView.vue')
+        },
+        {
           path: 'fill/:id',
           name: 'questionnaire-fill',
           component: () => import('../views/questionnaire/FillView.vue')

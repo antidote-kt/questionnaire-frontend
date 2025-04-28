@@ -3,8 +3,12 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 // 导入Element Plus图标
 import { User, Lock } from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
+import axios from 'axios'
+import { useUserStore } from '../stores/user'
 
 const router = useRouter()
+const userStore = useUserStore()
 const username = ref('')
 const password = ref('')
 const errorMessage = ref('')
@@ -20,29 +24,29 @@ const login = async () => {
     isLoading.value = true
     errorMessage.value = ''
     
-    // 这里应该替换为实际的API调用
-    // const response = await axios.post('/api/login', {
-    //   username: username.value,
-    //   password: password.value
-    // })
+    const response = await axios.post('/api/users/login', {
+      username: username.value,
+      password: password.value
+    })
     
-    // 模拟登录成功
-    setTimeout(() => {
-      // 存储用户信息和token
-      localStorage.setItem('user', JSON.stringify({
-        username: username.value,
-        nickname: '测试用户'
-      }))
-      localStorage.setItem('token', 'sample-token')
+    const { code, message, data } = response.data
+    
+    if (code === 200 && data) {
+      // 使用Pinia存储用户状态
+      userStore.login(data.token, data.user)
+      
+      ElMessage.success(message || '登录成功')
       
       // 登录成功后跳转到首页
       router.push('/')
-      isLoading.value = false
-    }, 1000)
-  } catch (error) {
-    isLoading.value = false
-    errorMessage.value = '登录失败，请检查用户名和密码'
+    } else {
+      errorMessage.value = message || '登录失败，请检查用户名和密码'
+    }
+  } catch (error: any) {
     console.error('登录错误:', error)
+    errorMessage.value = error.response?.data?.message || '登录失败，请检查网络连接'
+  } finally {
+    isLoading.value = false
   }
 }
 </script>

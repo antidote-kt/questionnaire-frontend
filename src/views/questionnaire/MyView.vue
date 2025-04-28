@@ -1,71 +1,108 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessageBox, ElMessage } from 'element-plus'
-import { Delete, Edit, View } from '@element-plus/icons-vue'
+import { Delete, Edit, View, Document } from '@element-plus/icons-vue'
+import axios from 'axios'
+import { useUserStore } from '../../stores/user'
 
 const router = useRouter()
+const userStore = useUserStore()
 
 // 定义问卷列表数据结构
 interface Questionnaire {
-  id: number
+  id: string
   title: string
   status: string
   createdAt: string
   responses: number
 }
 
-// 模拟问卷数据
-const questionnaires = ref<Questionnaire[]>([
-  {
-    id: 1,
-    title: '用户满意度调查',
-    status: '进行中',
-    createdAt: '2024-01-15',
-    responses: 120
-  },
-  {
-    id: 2,
-    title: '产品反馈问卷',
-    status: '已结束',
-    createdAt: '2024-01-10',
-    responses: 85
+// 问卷数据
+const questionnaires = ref<Questionnaire[]>([])
+const isLoading = ref(true)
+
+// 获取我的问卷列表
+const loadMyQuestionnaires = async () => {
+  isLoading.value = true
+  try {
+    const response = await axios.get('/api/questionnaires/my')
+    const { code, data } = response.data
+    
+    if (code === 200 && data) {
+      questionnaires.value = data.items
+    } else {
+      ElMessage.error('加载问卷列表失败')
+    }
+  } catch (error) {
+    console.error('加载问卷列表失败:', error)
+    ElMessage.error('加载问卷列表失败，请检查网络连接')
+  } finally {
+    isLoading.value = false
   }
-])
+}
+
+// 页面加载时获取问卷列表
+onMounted(() => {
+  if (userStore.isLoggedIn()) {
+    loadMyQuestionnaires()
+  } else {
+    ElMessage.warning('请先登录')
+    router.push('/login')
+  }
+})
 
 // 删除问卷
-const handleDelete = async (id: number) => {
+const handleDelete = async (id: string) => {
   try {
     await ElMessageBox.confirm('确定要删除这个问卷吗？', '提示', {
       confirmButtonText: '确定',
       cancelButtonText: '取消',
       type: 'warning'
     })
-    // 实际项目中这里应该调用API
-    questionnaires.value = questionnaires.value.filter(q => q.id !== id)
-    ElMessage.success('删除成功')
+    
+    const response = await axios.delete(`/api/questionnaires/${id}`)
+    const { code, message } = response.data
+    
+    if (code === 200) {
+      ElMessage.success(message || '删除成功')
+      // 重新加载问卷列表
+      loadMyQuestionnaires()
+    } else {
+      ElMessage.error(message || '删除失败')
+    }
   } catch (error) {
     if (error !== 'cancel') {
       console.error('删除问卷失败:', error)
-      ElMessage.error('删除失败')
+      ElMessage.error('删除失败，请检查网络连接')
     }
   }
 }
 
 // 编辑问卷
-const handleEdit = (id: number) => {
+const handleEdit = (id: string) => {
   router.push(`/questionnaire/edit/${id}`)
 }
 
 // 查看问卷结果
-const handleViewResults = (id: number) => {
+const handleViewResults = (id: string) => {
   router.push(`/questionnaire/results/${id}`)
+}
+
+// 查看问卷回答列表
+const handleViewResponses = (id: string) => {
+  router.push(`/questionnaire/responses/${id}`)
 }
 </script>
 
 <template>
   <div class="my-questionnaires">
-    <el-table :data="questionnaires" style="width: 100%" border>
+    <el-table 
+      :data="questionnaires" 
+      style="width: 100%" 
+      border
+      v-loading="isLoading"
+    >
       <el-table-column prop="title" label="问卷标题" min-width="200">
         <template #default="{ row }">
           <el-link type="primary" :underline="false" @click="handleEdit(row.id)">
@@ -86,7 +123,7 @@ const handleViewResults = (id: number) => {
       
       <el-table-column prop="responses" label="回复数" width="100" align="center" />
       
-      <el-table-column label="操作" width="280" fixed="right">
+      <el-table-column label="操作" width="380" fixed="right">
         <template #default="{ row }">
           <el-button-group>
             <el-button
@@ -103,7 +140,15 @@ const handleViewResults = (id: number) => {
               @click="handleViewResults(row.id)"
               size="small"
             >
-              查看结果
+              统计结果
+            </el-button>
+            <el-button
+              type="info"
+              :icon="Document"
+              @click="handleViewResponses(row.id)"
+              size="small"
+            >
+              查看回答
             </el-button>
             <el-button
               type="danger"

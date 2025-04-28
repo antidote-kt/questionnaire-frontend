@@ -52,44 +52,25 @@ const loadQuestionnaire = async () => {
   isLoading.value = true
   showError.value = false
   try {
-    // 模拟API调用数据
-    // TODO: 替换为实际的API调用
-    questionnaire.value = {
-      id: questionnaireId.value,
-      title: '示例问卷',
-      description: '这是一个示例问卷描述',
-      questions: [
-        {
-          id: 1,
-          type: 'text',
-          title: '您的姓名',
-          required: true
-        },
-        {
-          id: 2,
-          type: 'radio',
-          title: '您的性别',
-          required: true,
-          options: ['男', '女']
-        },
-        {
-          id: 3,
-          type: 'checkbox',
-          title: '您的兴趣爱好',
-          required: false,
-          options: ['阅读', '运动', '音乐', '旅行']
-        }
-      ]
+    const response = await axios.get(`/api/questionnaires/${questionnaireId.value}`)
+    const { code, data } = response.data
+    
+    if (code === 200 && data) {
+      questionnaire.value = data
+      
+      // 初始化答案数组
+      if (questionnaire.value && questionnaire.value.questions) {
+        answers.value = questionnaire.value.questions.map(q => ({
+          questionId: q.id,
+          type: q.type,
+          value: q.type === 'checkbox' ? [] : ''
+        }))
+      }
+      
+      isLoading.value = false
+    } else {
+      throw new Error('加载问卷失败')
     }
-
-    // 初始化答案数组
-    answers.value = questionnaire.value.questions.map(q => ({
-      questionId: q.id,
-      type: q.type,
-      value: q.type === 'checkbox' ? [] : ''
-    }))
-
-    isLoading.value = false
   } catch (error) {
     console.error('加载问卷失败:', error)
     isLoading.value = false
@@ -124,18 +105,22 @@ const submitResponse = async () => {
   }
 
   try {
-    // 这里应该替换为实际的API调用
-    await axios.post(`/api/questionnaires/${questionnaireId.value}/responses`, {
+    const response = await axios.post(`/api/questionnaires/${questionnaireId.value}/responses`, {
       answers: answers.value
     })
-
-    // 提交成功
-    showSuccess.value = true
-    ElMessage.success('问卷提交成功！感谢您的参与。')
-
+    
+    const { code, message } = response.data
+    
+    if (code === 200) {
+      // 提交成功
+      showSuccess.value = true
+      ElMessage.success(message || '问卷提交成功！感谢您的参与。')
+    } else {
+      ElMessage.error(message || '提交失败，请稍后重试')
+    }
   } catch (error) {
     console.error('提交回答失败:', error)
-    ElMessage.error('提交回答失败，请稍后重试')
+    ElMessage.error('提交失败，请稍后重试')
   }
 }
 
