@@ -3,6 +3,15 @@ import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import axios from 'axios'
+import { useUserStore } from '../../stores/user'
+
+// 定义用户信息类型
+interface UserInfo {
+  id: number
+  username: string
+  nickname: string
+  email?: string
+}
 
 interface Question {
   id: number
@@ -27,6 +36,7 @@ interface Answer {
 
 const route = useRoute()
 const router = useRouter()
+const userStore = useUserStore()
 
 const questionnaireId = ref('')
 const questionnaire = ref<QuestionnaireData | null>(null)
@@ -34,16 +44,28 @@ const isLoading = ref(true)
 const showSuccess = ref(false)
 const showError = ref(false)
 const errorMessage = ref('')
-const userInfo = ref(null)
+const userInfo = ref<UserInfo | null>(null)
 
 // 表单数据
 const answers = ref<Answer[]>([])
 
 // 加载用户信息
 const loadUserInfo = () => {
+  // 从localStorage加载用户信息
   const userStr = localStorage.getItem('user')
   if (userStr) {
     userInfo.value = JSON.parse(userStr)
+  }
+  
+  // 同时也检查userStore中的登录状态
+  if (userStore.isLoggedIn()) {
+    // 如果用户已登录，确保userInfo包含用户数据
+    if (!userInfo.value && userStore.userInfo) {
+      userInfo.value = userStore.userInfo
+    }
+    console.log('用户已登录:', userInfo.value)
+  } else {
+    console.log('用户未登录')
   }
 }
 
@@ -105,9 +127,43 @@ const submitResponse = async () => {
   }
 
   try {
-    const response = await axios.post(`/api/questionnaires/${questionnaireId.value}/responses`, {
-      answers: answers.value
-    })
+    // 将前端的回答格式转换为后端期望的格式
+    const formattedAnswers = questionnaire.value.questions.map((question, index) => {
+      const answer = answers.value[index];
+      if (question.type === 'text') {
+        return {
+          question_id: question.id,
+          answer_type: 'text',
+          text_value: answer.value
+        };
+      } else if (question.type === 'radio') {
+        return {
+          question_id: question.id,
+          answer_type: 'option',
+          option_values: [answer.value]
+        };
+      } else if (question.type === 'checkbox') {
+        return {
+          question_id: question.id,
+          answer_type: 'options',
+          option_values: answer.value
+        };
+      }
+    });
+
+    const requestData = {
+      questionnaire_id: parseInt(questionnaireId.value),
+      answers: formattedAnswers
+    };
+
+    console.log('提交的数据格式:', requestData);
+    
+    // 根据用户登录状态选择不同的API路径
+    const apiUrl = userInfo.value 
+      ? '/api/responses/submit/auth'  // 已登录用户路径
+      : '/api/responses/submit';      // 匿名用户路径
+    
+    const response = await axios.post(apiUrl, requestData);
     
     const { code, message } = response.data
     
@@ -118,9 +174,28 @@ const submitResponse = async () => {
     } else {
       ElMessage.error(message || '提交失败，请稍后重试')
     }
-  } catch (error) {
-    console.error('提交回答失败:', error)
-    ElMessage.error('提交失败，请稍后重试')
+  } catch (error: any) {
+    console.error('提交回答失败:', error);
+    
+    // 显示详细的错误信息
+    if (error.response) {
+      // 检查是否为验证错误（422状态码）
+      if (error.response.status === 422 || error.response.status === 400) {
+        // 处理验证错误，包括重复提交的情况
+        const errorMessage = error.response.data?.message || '表单验证失败';
+        ElMessage.error(errorMessage);
+      } else if (error.response.data) {
+        // 其他有响应数据的错误
+        const errorMsg = error.response.data.message || error.response.data;
+        ElMessage.error(`提交失败: ${errorMsg}`);
+      } else {
+        // 没有响应数据的错误
+        ElMessage.error(`提交失败: ${error.response.statusText}`);
+      }
+    } else {
+      // 网络错误或其他错误
+      ElMessage.error(error.message || '提交失败，请检查网络连接');
+    }
   }
 }
 

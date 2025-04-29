@@ -9,13 +9,25 @@ import { useUserStore } from '../../stores/user'
 const router = useRouter()
 const userStore = useUserStore()
 
+// 定义后端返回的问卷项目数据结构
+interface QuestionnaireApiItem {
+  id: number
+  title: string
+  description: string
+  creator: string
+  created_at: string
+  response_count: number
+}
+
 // 定义问卷列表数据结构
 interface Questionnaire {
-  id: string
+  id: number | string
   title: string
   status: string
   createdAt: string
   responses: number
+  description?: string
+  creator?: string
 }
 
 // 问卷数据
@@ -30,7 +42,16 @@ const loadMyQuestionnaires = async () => {
     const { code, data } = response.data
     
     if (code === 200 && data) {
-      questionnaires.value = data.items
+      // 转换后端数据到前端需要的格式
+      questionnaires.value = data.items.map((item: QuestionnaireApiItem) => ({
+        id: item.id,
+        title: item.title,
+        status: '进行中', // 默认状态
+        createdAt: new Date(item.created_at).toLocaleString(), // 格式化日期
+        responses: item.response_count,
+        description: item.description,
+        creator: item.creator
+      }))
     } else {
       ElMessage.error('加载问卷列表失败')
     }

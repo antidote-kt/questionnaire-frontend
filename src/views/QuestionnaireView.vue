@@ -2,10 +2,13 @@
 import { ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 // 导入Element Plus图标
-import { Document, Search, Edit, DataAnalysis } from '@element-plus/icons-vue'
+import { Document, Search, Edit, DataAnalysis, SwitchButton } from '@element-plus/icons-vue'
+import { useUserStore } from '../stores/user'
+import { ElMessage } from 'element-plus'
 
 const router = useRouter()
 const route = useRoute()
+const userStore = useUserStore()
 
 // 获取当前活动的子路由
 // 初始化 activeMenu 基于当前路由
@@ -24,6 +27,13 @@ const navigateTo = (routeName: string) => {
   router.push({ name: routeName }).then(() => {
     activeMenu.value = routeName; // 在路由导航完成后更新 activeMenu
   });
+}
+
+// 退出登录
+const handleLogout = () => {
+  userStore.logout()
+  ElMessage.success('已退出登录')
+  router.push('/login')
 }
 </script>
 
@@ -52,10 +62,6 @@ const navigateTo = (routeName: string) => {
             <span>我的问卷</span>
           </el-menu-item>
         </el-menu>
-        <div class="sidebar-footer">
-          <el-button type="primary" @click="router.push('/login')" plain size="small">登录</el-button>
-          <el-button type="info" @click="router.push('/register')" plain size="small">注册</el-button>
-        </div>
       </el-aside>
       <el-container class="main-content">
         <el-header class="content-header">
@@ -71,15 +77,27 @@ const navigateTo = (routeName: string) => {
             </h2>
           </div>
           <div class="user-info">
+            <el-button 
+              v-if="userStore.isLoggedIn()" 
+              type="danger" 
+              size="small" 
+              @click="handleLogout" 
+              :icon="SwitchButton"
+              class="logout-btn"
+              plain
+            >
+              退出登录
+            </el-button>
+            
             <el-dropdown>
               <span class="user-dropdown">
                 <el-avatar :size="32" src="https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png" />
-                <span>用户</span>
+                <span>{{ userStore.isLoggedIn() ? userStore.userInfo?.nickname || userStore.userInfo?.username : '游客' }}</span>
               </span>
               <template #dropdown>
                 <el-dropdown-menu>
-                  <el-dropdown-item @click="router.push('/login')">登录</el-dropdown-item>
-                  <el-dropdown-item @click="router.push('/register')">注册</el-dropdown-item>
+                  <el-dropdown-item v-if="userStore.isLoggedIn()" @click="handleLogout">退出登录</el-dropdown-item>
+                  <el-dropdown-item v-else @click="router.push('/login')">登录</el-dropdown-item>
                 </el-dropdown-menu>
               </template>
             </el-dropdown>
@@ -125,13 +143,6 @@ const navigateTo = (routeName: string) => {
   border-right: none;
 }
 
-.sidebar-footer {
-  padding: 15px;
-  border-top: 1px solid #e6e6e6;
-  display: flex;
-  justify-content: space-around;
-}
-
 .content-header {
   background-color: #fff;
   border-bottom: 1px solid #e6e6e6;
@@ -160,5 +171,15 @@ const navigateTo = (routeName: string) => {
 .el-main {
   background-color: #f5f7fa;
   padding: 20px;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.logout-btn {
+  margin-right: 10px;
 }
 </style>

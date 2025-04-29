@@ -44,7 +44,18 @@ const login = async () => {
     }
   } catch (error: any) {
     console.error('登录错误:', error)
-    errorMessage.value = error.response?.data?.message || '登录失败，请检查网络连接'
+    // 添加更详细的错误信息输出
+    if (error.response) {
+      console.error('错误状态码:', error.response.status)
+      console.error('错误响应数据:', error.response.data)
+      errorMessage.value = `登录失败: ${error.response.status} - ${error.response.data?.message || '未知错误'}`
+    } else if (error.request) {
+      console.error('请求发出但未收到响应', error.request)
+      errorMessage.value = '网络错误：服务器未响应，请检查后端服务是否运行'
+    } else {
+      console.error('请求配置错误', error.message)
+      errorMessage.value = `请求错误: ${error.message}`
+    }
   } finally {
     isLoading.value = false
   }

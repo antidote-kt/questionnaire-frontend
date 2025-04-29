@@ -60,14 +60,32 @@ const loadResponses = async (page = 1) => {
       title.value = questData.title
     }
     
-    // 获取问卷回答列表
-    const params = { page: page, limit: pageSize.value }
-    const response = await axios.get(`/api/questionnaires/${questionnaireId.value}/responses`, { params })
+    // 获取问卷回答列表 - 修正API路径
+    const params = { page: page, page_size: pageSize.value }
+    const response = await axios.get(`/api/responses/questionnaires/${questionnaireId.value}/responses`, { params })
     const { code, data } = response.data
     
     if (code === 200 && data) {
-      responsesList.value = data.items
-      totalResponses.value = data.total
+      console.log('后端返回的原始数据:', data);
+      
+      // 处理后端返回的不同数据格式
+      if (Array.isArray(data)) {
+        // 后端直接返回数组，需要转换字段名
+        responsesList.value = data.map(item => ({
+          id: item.id,
+          submittedAt: new Date(item.created_at).toLocaleString(),
+          submittedBy: item.respondent,
+          // 注意：这里answers字段暂时是空的，会在查看详情时加载
+          answers: []
+        }));
+        totalResponses.value = data.length; // 这里没有分页信息，暂用数组长度
+      } else {
+        // 如果后端返回了预期的对象格式
+        responsesList.value = Array.isArray(data.items) ? data.items : [];
+        totalResponses.value = data.total || 0;
+      }
+      
+      console.log('处理后的回答数据:', responsesList.value);
     } else {
       ElMessage.error('加载问卷回答失败')
     }
@@ -85,9 +103,40 @@ const handlePageChange = (page: number) => {
 }
 
 // 查看回答详情
-const viewResponseDetail = (response: Response) => {
-  currentResponse.value = response
-  showDetailDialog.value = true
+const viewResponseDetail = async (response: Response) => {
+  try {
+    // 如果回答没有详细内容，需要先加载
+    if (!response.answers || response.answers.length === 0) {
+      const detailResponse = await axios.get(`/api/responses/${response.id}`);
+      const { code, data } = detailResponse.data;
+      
+      if (code === 200 && data) {
+        console.log('加载的回答详情:', data);
+        
+        // 转换后端数据格式为前端格式
+        const formattedAnswers = data.answers.map((answer: any) => ({
+          questionId: answer.question_id,
+          question: answer.question_title,
+          type: answer.question_type,
+          value: answer.question_type === 'checkbox' 
+            ? (answer.selected_options || []) 
+            : (answer.text_value || answer.selected_options?.[0] || '')
+        }));
+        
+        // 更新响应对象
+        response.answers = formattedAnswers;
+      } else {
+        ElMessage.error('加载回答详情失败');
+        return;
+      }
+    }
+    
+    currentResponse.value = response;
+    showDetailDialog.value = true;
+  } catch (error) {
+    console.error('加载回答详情失败:', error);
+    ElMessage.error('加载回答详情失败，请检查网络连接');
+  }
 }
 
 // 获取问题标题

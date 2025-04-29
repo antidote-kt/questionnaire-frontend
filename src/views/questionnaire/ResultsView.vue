@@ -46,19 +46,44 @@ const loadQuestionnaireResults = async () => {
   }
   
   isLoading.value = true
+  console.log('开始加载问卷结果，ID:', id);
   
   try {
-    const response = await axios.get(`/api/questionnaires/${id}/results`)
+    const response = await axios.get(`/api/responses/questionnaires/${id}/statistics`)
+    console.log('收到后端响应:', response.data);
     const { code, data } = response.data
     
     if (code === 200 && data) {
-      questionnaireResult.value = data
+      questionnaireResult.value = {
+        id: data.questionnaire_id.toString(),
+        title: data.title,
+        totalResponses: data.response_count,
+        questions: data.questions.map((q: any) => ({
+          id: q.question_id,
+          question: q.title,
+          type: q.question_type === 'radio' ? 'single-choice' : 
+                q.question_type === 'checkbox' ? 'multiple-choice' : 'text',
+          options: q.option_counts ? q.option_counts.map((opt: any) => ({
+            label: opt.option_text,
+            count: opt.count
+          })) : undefined,
+          textResponses: q.text_responses
+        }))
+      };
+      
+      console.log('处理后的结果数据:', questionnaireResult.value);
     } else {
+      console.error('加载问卷结果失败，返回码:', code, '返回消息:', response.data.message);
       ElMessage.error('加载问卷结果失败')
     }
-  } catch (error) {
-    console.error('加载问卷结果失败:', error)
-    ElMessage.error('加载问卷结果失败，请检查网络连接')
+  } catch (error: any) {
+    console.error('加载问卷结果失败:', error);
+    // 输出详细的错误信息
+    if (error.response) {
+      console.error('错误响应状态:', error.response.status);
+      console.error('错误响应数据:', error.response.data);
+    }
+    ElMessage.error(`加载问卷结果失败: ${error.message || '未知错误'}`)
   } finally {
     isLoading.value = false
   }

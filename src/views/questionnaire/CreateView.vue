@@ -49,8 +49,18 @@ const loadQuestionnaireData = async () => {
       if (code === 200 && data) {
         title.value = data.title
         description.value = data.description
-        isPublic.value = data.isPublic
-        questions.value = data.questions
+        isPublic.value = data.is_public
+        
+        // 转换问题数据以匹配前端格式
+        questions.value = (data.questions || []).map((q: any) => ({
+          id: q.id,
+          title: q.title,
+          type: q.type || q.question_type, // 兼容两种字段名
+          required: q.required,
+          options: q.options || []
+        }))
+        
+        console.log('加载的问卷数据:', data)
       } else {
         ElMessage.error('加载问卷失败')
       }
@@ -75,7 +85,7 @@ onMounted(() => {
 // 添加问题
 const addQuestion = () => {
   questions.value.push({
-    id: Date.now(),
+    id: Math.floor(Math.random() * 1000000), // 使用较小的随机数替代Date.now()
     type: 'text',
     title: '',
     required: true,
@@ -102,9 +112,18 @@ const submitQuestionnaire = async () => {
     const questionnaireData = {
       title: title.value,
       description: description.value,
-      isPublic: isPublic.value,
-      questions: questions.value
+      is_public: isPublic.value,
+      questions: questions.value.map(q => ({
+        //id : q.id,
+        title: q.title,
+        type: q.type,
+        required: q.required,
+        options: q.options || []
+      }))
     }
+    
+    // 在发送请求前打印数据
+    console.log('发送的问卷数据:', JSON.stringify(questionnaireData))
     
     let response
     
